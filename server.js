@@ -6,148 +6,114 @@ app.use(express.static("public"));
 app.use(express.json());
 const cors = require("cors");
 app.use(cors());
+const mongoose = require("mongoose");
 
 const upload = multer({ dest: __dirname + "/public/images" });
 
+mongoose
+ .connect("mongodb://localhost/rockets")
+ .then(() => console.log("Connected to mongodb..."))
+ .catch((error) => console.log("Couldn't connect to mongodb...", error));
+
 app.get("/", (req, res) => {
-  res.sendFile(__dirname + "/index.html");
+    res.sendFile(__dirname + "/index.html");
 });
 
-let rockets = [{
-        _id: 1,
-        name: "Falcon Heavy",
-        company: "SpaceX",
-        payload_capacity_kg: 63800,
-        propellant_type: "liquid",
-        successful_launches: 4,
-        img: "falcon_heavy.jpg",
-        launch_sites: ["Kennedy Space Center",
-        "Vandenberg Space Force Base"],
-    },
-    {
-        _id: 2,
-        name: "Atlas V",
-        company: "United Launch Alliance",
-        payload_capacity_kg: 20600,
-        propellant_type: "liquid",
-        successful_launches: 86,
-        img: "atlas_v.jpg",
-        launch_sites: ["Cape Canaveral Space Force Station",
-        "Vandenberg Space Force Base"]
-    },
-    {
-        _id: 3,
-        name: "Delta IV Heavy",
-        company: "United Launch Alliance",
-        payload_capacity_kg: 28800,
-        propellant_type: "liquid",
-        successful_launches: 12,
-        img: "delta_iv_heavy.jpg",
-        launch_sites: ["Cape Canaveral Space Force Station"]
-    },
-    {
-        _id: 4,
-        name: "SLS",
-        company: "NASA",
-        payload_capacity_kg: 95000,
-        propellant_type: "liquid",
-        successful_launches: 0,
-        img: "sls.jpg",
-        launch_sites: ["Kennedy Space Center"]
-    },
-    {
-        _id: 5,
-        name: "New Glenn",
-        company: "Blue Origin",
-        payload_capacity_kg: 45000,
-        propellant_type: "liquid",
-        successful_launches: 0,
-        img: "new_glenn.jpg",
-        launch_sites: ["Cape Canaveral Space Force Station"]
-    },
-    {
-        _id: 6,
-        name: "Starship",
-        company: "SpaceX",
-        payload_capacity_kg: 100000,
-        propellant_type: "liquid",
-        successful_launches: 0,
-        img: "starship.jpg",
-        launch_sites: ["Boca Chica, Texas"]
-}];
+const rocketSchema = new mongoose.Schema({
+    name: String,
+    company: String,
+    payload_capacity_kg: Number,
+    propellant_type: String,
+    successful_launches: Number,
+    launch_sites: [String],
+    img: String,
+});
+
+const Rocket = mongoose.model("Rocket", rocketSchema);
 
 app.get("/api/rockets", (req, res) => {
-    res.send(rockets);
+    getRockets(res);
 });
 
+const getRockets = async (res) => {
+    const rockets = await Rocket.find();
+    res.send(rockets);
+};
+
 app.post("/api/rockets", upload.single("img"), (req, res) => {
-	console.log(req.body);
     const result = validateRocket(req.body);
+    console.log(result);
 
     if (result.error) {
         res.status(400).send(result.error.details[0].message);
         return;
     }
 
-    const rocket = {
-        _id: rockets.length + 1,
+    const rocket = new Rocket({
         name: req.body.name,
         company: req.body.company,
         payload_capacity_kg: req.body.payload_capacity_kg,
         propellant_type: req.body.propellant_type,
         successful_launches: req.body.successful_launches,
-        launch_sites: req.body.launch_sites.split(".")
-    }
+        launch_sites: req.body.launch_sites.split("."),
+    });
 
     if (req.file) {
         rocket.img = "images/" + req.file.filename;
     }
 
-    rockets.push(rocket);
-    res.send(rockets);
+    createRocket(rocket, res);
 });
 
+const createRocket = async (rocket, res) => {
+    const result = await rocket.save();
+    res.send(rocket);
+};
+
 app.put("/api/rockets/:id", upload.single("img"), (req, res) => {
-    const id = parseInt(req.params.id);
-
-    const rocket = rockets.find((r) => r._id === id);
-
     const result = validateRocket(req.body);
-    
+    console.log(result);
     if (result.error) {
         res.status(400).send(result.error.details[0].message);
         return;
     }
+    updateRocket(req, res);
+});
 
-    rocket.name = req.body.name;
-    rocket.company = req.body.company;
-    rocket.payload_capacity_kg = req.body.payload_capacity_kg;
-    rocket.propellant_type = req.body.propellant_type;
-    rocket.successful_launches = req.body.successful_launches;
-    rocket.launch_sites = req.body.launch_sites.split(".");
-    
+const getRocket = async(res, id) => {
+    const rocket = await Rocket.findOne({_id:id});
+    res.send(rocket);
+};
+
+
+
+const updateRocket = async (req, res) => {
+    let fieldToUpdate = {
+        name: req.body.name,
+        company: req.body.company,
+        payload_capacity_kg: req.body.payload_capacity_kg,
+        propellant_type: req.body.propellant_type,
+        successful_launches: req.body.successful_launches,
+        launch_sites: req.body.launch_sites.split("."),
+    };
+
     if (req.file) {
-        rocket.img = "images/" + req.file.filename;
+        fieldToUpdate.img = "images/" + req.file.filename;
     }
 
+    const result = await Rocket.updateOne({_id:req.params.id}, fieldToUpdate);
+    const rocket = await Rocket.findById(req.params.id);
     res.send(rocket);
-});
+};
 
 app.delete("/api/rockets/:id", upload.single("img"), (req, res) => {
-    const id = parseInt(req.params.id);
-
-    const rocket = rockets.find((r) => r._id === id);
-
-    if (!rocket) {
-        res.status(404).send("The rocket was not found");
-        return;
-    }
-
-    const index = rockets.indexOf(rocket);
-    rockets.splice(index, 1);
-    res.send(rocket);
-
+   removeRockets(res, req.params.id);
 });
+
+const removeRockets = async(res, id) => {
+    const rocket = await Rocket.findByIdAndDelete(id);
+    res.send(rocket);
+};
 
 const validateRocket = (rocket) => {
     const schema = Joi.object({

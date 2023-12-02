@@ -1,75 +1,72 @@
-const addEditRocket = async(e) => {
-    e.preventDefault();
-    const form = document.getElementById("add-edit-rocket-form");
-    const formData = new FormData(form);
-    let response;
-    //trying to add a new rocket
-    if (form._id.value == -1) {
-        formData.delete("_id");
-        formData.delete("img");
-        formData.append("sites", getSites());
+let rockets = [{
+        _id: 1,
+        name: "Falcon Heavy",
+        company: "SpaceX",
+        payload_capacity_kg: 63800,
+        propellant_type: "liquid",
+        successful_launches: 4,
+        img: "falcon_heavy.jpg",
+        launch_sites: ["Kennedy Space Center",
+        "Vandenberg Space Force Base"],
+    },
+    {
+        _id: 2,
+        name: "Atlas V",
+        company: "United Launch Alliance",
+        payload_capacity_kg: 20600,
+        propellant_type: "liquid",
+        successful_launches: 86,
+        img: "atlas_v.jpg",
+        launch_sites: ["Cape Canaveral Space Force Station",
+        "Vandenberg Space Force Base"]
+    },
+    {
+        _id: 3,
+        name: "Delta IV Heavy",
+        company: "United Launch Alliance",
+        payload_capacity_kg: 28800,
+        propellant_type: "liquid",
+        successful_launches: 12,
+        img: "delta_iv_heavy.jpg",
+        launch_sites: ["Cape Canaveral Space Force Station"]
+    },
+    {
+        _id: 4,
+        name: "SLS",
+        company: "NASA",
+        payload_capacity_kg: 95000,
+        propellant_type: "liquid",
+        successful_launches: 0,
+        img: "sls.jpg",
+        launch_sites: ["Kennedy Space Center"]
+    },
+    {
+        _id: 5,
+        name: "New Glenn",
+        company: "Blue Origin",
+        payload_capacity_kg: 45000,
+        propellant_type: "liquid",
+        successful_launches: 0,
+        img: "new_glenn.jpg",
+        launch_sites: ["Cape Canaveral Space Force Station"]
+    },
+    {
+        _id: 6,
+        name: "Starship",
+        company: "SpaceX",
+        payload_capacity_kg: 100000,
+        propellant_type: "liquid",
+        successful_launches: 0,
+        img: "starship.jpg",
+        launch_sites: ["Boca Chica, Texas"]
+}];
 
-        console.log(...formData);
 
-        response = await fetch("/api/rockets", {
-            method: "POST",
-            body: formData
-        });
-    }
+app.get("/api/rockets/:id", (req, res) => {
+    getRocket(res, req.params.id);
+});
 
-    response = await response.json();
-    showRockets();
+const getRocket = async(res, id) => {
+    const rocket = await Rocket.findOne({_id:id});
+    res.send(rocket);
 };
-
-const getSites = () => {
-    const inputs = document.querySelectorAll("#site-boxes input");
-    let sites = [];
-
-    inputs.forEach((input) => {
-        sites.push(input.value);
-    });
-
-    return sites;
-};
-
-const validateRocket = (rocket) => {
-    const schema = Joi.object({
-        _id: Joi.allow(""),
-        name: Joi.string().min(3).required(),
-        company: Joi.string().min(5).required(),
-        payload_capacity_kg: Joi.number().positive().required(),
-        propellant_type: Joi.string().min(3).required(),
-        successful_launches: Joi.number().required(),
-        launch_sites: Joi.allow("")
-    });
-
-    return schema.validate(rocket);
-}
-
-
-    try {
-        // Checking if it's a new rocket (based on _id)
-        if (form._id.value === "-1") {
-            formData.delete("_id");
-            formData.delete("img");
-
-            const sites = getSites().join("."); // Join the sites with a period
-            formData.set("launch_sites", sites); // Set the launch_sites field with the joined sites
-
-            console.log(...formData);
-            
-            response = await fetch("/api/rockets", {
-                method: "POST",
-                body: formData
-            });
-
-            response = await response.json();
-            }
-
-            showRockets();
-    }
-    catch (error) {
-        const errorMessage = document.getElementById("error-message");
-        errorMessage.innerHTML = "There was an error with submission.";
-        console.log(error);
-    }
