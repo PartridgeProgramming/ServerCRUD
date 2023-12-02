@@ -80,13 +80,6 @@ app.put("/api/rockets/:id", upload.single("img"), (req, res) => {
     updateRocket(req, res);
 });
 
-const getRocket = async(res, id) => {
-    const rocket = await Rocket.findOne({_id:id});
-    res.send(rocket);
-};
-
-
-
 const updateRocket = async (req, res) => {
     let fieldToUpdate = {
         name: req.body.name,
@@ -117,7 +110,7 @@ const removeRockets = async(res, id) => {
 
 const validateRocket = (rocket) => {
     const schema = Joi.object({
-        _id: Joi.number().allow(''),
+        _id: Joi.allow(''),
         name: Joi.string().min(3).required(),
         company: Joi.string().min(5).required(),
         payload_capacity_kg: Joi.number().positive().required(),
